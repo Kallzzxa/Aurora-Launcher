@@ -1,0 +1,16 @@
+# Build outputs
+build/
+app/build/
+app/.cxx/
+.gradle/
+# IDE
+.idea/
+*.iml
+# Local machine config
+local.properties
+# Signing keystores (never commit the real keystore)
+*.jks
+*.keystore
+# OS
+.DS_Store
+Thumbs.db

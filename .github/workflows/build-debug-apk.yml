@@ -1,0 +1,68 @@
+name: Build debug APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        run: |
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.2.11394342" >> "$GITHUB_ENV"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            --sdk_root="$ANDROID_HOME" \
+            "platform-tools" "platforms;android-34" "build-tools;34.0.0" \
+            "ndk;26.2.11394342" > /dev/null
+
+      - name: Generate throwaway signing key
+        run: |
+          KS_PASS="$(openssl rand -hex 12)"
+          echo "KS_PASS=$KS_PASS" >> "$GITHUB_ENV"
+          keytool -genkeypair -keystore app/aurora.jks \
+            -alias aurora0 -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "$KS_PASS" -keypass "$KS_PASS" \
+            -dname "CN=Aurora CI, OU=CI, O=CI, C=ID"
+
+      - name: Build debug APK
+        run: >
+          ./gradlew assembleVer_debugDebug --stacktrace
+          -PAURORA_STORE_PASSWORD="$KS_PASS"
+          -PAURORA_KEY_PASSWORD="$KS_PASS"
+          -PAURORA_KEY_ALIAS=aurora0
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aurora-debug
+          path: app/build/outputs/apk/ver_debug/debug/Aurora-debug.apk
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v0.1.1-keys-settings-build-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" \
+            app/build/outputs/apk/ver_debug/debug/Aurora-debug.apk \
+            --title "Aurora Launcher v0.1.1 (tombol launcher + pindah server)" \
+            --notes "Tombol ala SA-MP Mobile Launcher + pindah server lewat file.
+
+          - Tombol TAB toggle scoreboard (tekan kedua menutup).
+          - Tombol ESC tampil dan membatalkan klik textdraw; ESC/Y/H/N/ALT menutup scoreboard saat terbuka.
+          - Tombol keyboard fisik TAB/ESC/Y/H/N/ALT berperilaku sama (diteruskan normal saat mengetik).
+          - Pindah server lewat SAMP/settings.json {\"host\": \"...\", \"port\": 7777} (fallback settings.ini, lalu server bawaan).
+
+          Catatan: APK ini ditandatangani kunci CI sekali pakai, bukan kunci Aurora asli - jadi tidak bisa update timpa install lama; uninstall dulu baru install."

@@ -1,0 +1,5 @@
+# Copy to gradle.properties (gitignored) for local signed builds.
+# CI generates its own throwaway keystore and passes these via -P flags.
+AURORA_STORE_PASSWORD=
+AURORA_KEY_PASSWORD=
+AURORA_KEY_ALIAS=aurora0
