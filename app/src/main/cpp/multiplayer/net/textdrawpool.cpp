@@ -54,7 +54,10 @@ void CTextDrawPool::Draw()
 {
     for (int i = 0; i < MAX_TEXT_DRAWS; i++)
     {
-        if (m_bSlotState[i]) {
+        // Guard: slot state alone does not prove the object is alive.
+        // A stale slot used to crash the renderer with a garbage fault
+        // address. Same check SetSelectState already uses below.
+        if (m_bSlotState[i] && m_pTextDraw[i]) {
             m_pTextDraw[i]->Draw();
         }
     }
